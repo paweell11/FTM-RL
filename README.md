@@ -44,15 +44,7 @@ pip3 install . --user
 ```bash
 cd $NS3_DIR
 
-./waf configure -d optimized --enable-examples --enable-tests --disable-werror --disable-python
-./waf
-
-cd $NS3_DIR/contrib/ns3-ai/py_interface
-pip3 install . 
-```
-or (if you are not in venv)
-```bash
-pip3 install . --user
+python scratch/run.py
 ```
 
 If ./waf fails (e.g. with Python 3.10), add #include <limits> to $NS3_DIR/src/core/helper/csv-reader.cc.
