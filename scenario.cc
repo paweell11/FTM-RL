@@ -38,6 +38,8 @@ struct Env
   bool     ftmAsap;
   uint8_t  ftmFtmsPerBurst;
   uint16_t ftmBurstPeriod;
+  uint32_t attempts;   
+  uint32_t successes;  
 }Packed;
 
 struct Act
@@ -84,6 +86,9 @@ namespace {
   static uint32_t g_changeEvery = 10;
   static uint32_t g_sessionsSinceChange = 0;
 
+  static uint32_t g_sessionsTotal = 0; // wszystkie zakończone sesje
+  static uint32_t g_sessionsOk = 0; // udane sesje
+
   static FTMControl* g_ftmCtrl = nullptr;
 }
 
@@ -95,7 +100,9 @@ static void ApplyFtmFromPython()
 {
   if (!g_ftmCtrl) return;
 
-  Env env{};                         
+  Env env{};    
+  env.attempts = g_sessionsTotal;
+  env.successes = g_sessionsOk;                     
   Act act = g_ftmCtrl->GetFTMParams(env);
 
   if (!act.apply) return;
@@ -111,6 +118,10 @@ static void ApplyFtmFromPython()
   p.SetBurstPeriod(act.ftmBurstPeriod);
 
   SetFtmParams(p);
+  
+  g_sessionsTotal = 0;
+  g_sessionsOk    = 0;
+  
 
   std::cout << "[t=" << Simulator::Now().GetSeconds() << "s] APPLIED FTM: "
             << "BDur="    << int(act.ftmBurstDuration)
@@ -156,6 +167,7 @@ double logInterval = 0.5;
 double warmupTime = 10.;
 double simulationTime = 50.;
 bool hiddenCrossScenario = false;
+
 
 /***** Main with scenario definition *****/
 
@@ -846,22 +858,23 @@ FtmBurst (uint32_t staId, Ptr<WifiNetDevice> device, Mac48Address apAddress)
   Simulator::Schedule (Seconds (ftmIntervalTime), &FtmBurst, staId, device, apAddress);
 }
 
-void
+void 
 FtmSessionOver (FtmSession session)
 {
+  g_sessionsTotal++;
+
   double distance = session.GetMeanRTT () * RTT_TO_DISTANCE;
-
   if (distance != 0 && distance < MAX_DISTANCE)
-    {
-      // FTM success
-      ftmReqRec++;
+  {
+    ftmReqRec++;
+    g_sessionsOk++;
+  }
 
-      g_sessionsSinceChange++;
-      if (g_sessionsSinceChange >= g_changeEvery)
-      {
-        g_sessionsSinceChange = 0;
-        ApplyFtmFromPython();  
-      }
-
-    }
+  // zmiana co N sesji (łącznie)
+  g_sessionsSinceChange++;
+  if (g_sessionsSinceChange >= g_changeEvery)
+  {
+    g_sessionsSinceChange = 0;
+    ApplyFtmFromPython();
+  }
 }

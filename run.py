@@ -13,6 +13,8 @@ class Env(Structure):
         ('ftmAsap', c_bool),
         ('ftmFtmsPerBurst', c_uint8),
         ('ftmBurstPeriod', c_uint16),
+        ('attempts', c_uint32),  
+        ('successes', c_uint32),  
     ]
 
 class Act(Structure):
@@ -29,6 +31,19 @@ class Act(Structure):
         ('apply', c_bool), 
     ]
 
+def ftm_success_rate(e: Env):
+    return (e.successes / e.attempts) if e.attempts else None
+
+def set_random_params(a: Act):
+    a.ftmNumberOfBurstsExponent = 1
+    a.ftmBurstDuration = random.randint(1, 10)
+    a.ftmMinDeltaFtm = random.randint(1, 10)
+    a.ftmPartialTsfTimer = 0
+    a.ftmPartialTsfNoPref = True
+    a.ftmAsap = random.choice([True, False])
+    a.ftmFtmsPerBurst = random.randint(1, 10)
+    a.ftmBurstPeriod = random.randint(1, 15)
+    a.apply = True
 
 mempool_key = 1234
 mem_size = 4096
@@ -48,23 +63,24 @@ try:
         while not rl.isFinish():
             with rl as data:
                 if data is None:
-                    break  
-                # ustaw akcję
-                data.act.ftmNumberOfBurstsExponent = 1
-                data.act.ftmBurstDuration = random.randint(1, 10)
-                data.act.ftmMinDeltaFtm = random.randint(1, 10)
-                data.act.ftmPartialTsfTimer = 0
-                data.act.ftmPartialTsfNoPref = True
-                data.act.ftmAsap = random.choice([True, False])
-                data.act.ftmFtmsPerBurst = random.randint(1, 10)
-                data.act.ftmBurstPeriod = random.randint(1, 15)
-                data.act.apply = True
+                    continue  
+                
+                e = data.env
+                sr = ftm_success_rate(e)
+                if sr is None:
+                    print("PY recv: attempts=0 (brak SR)")
+                else:
+                    print(f"PY recv: attempts={e.attempts} succ={e.successes} rate={sr:.3f}")
+
+                a = data.act
+                set_random_params(a)
+
                 print("PY sent:",
-                    data.act.ftmBurstDuration,
-                    data.act.ftmMinDeltaFtm,
-                    data.act.ftmFtmsPerBurst,
-                    data.act.ftmBurstPeriod,
-                    data.act.ftmAsap)
+                    a.ftmBurstDuration,
+                    a.ftmMinDeltaFtm,
+                    a.ftmFtmsPerBurst,
+                    a.ftmBurstPeriod,
+                    a.ftmAsap)
 
         pro.wait()
 
