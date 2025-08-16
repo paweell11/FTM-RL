@@ -79,41 +79,46 @@ Act FTMControl::GetFTMParams(const Env& env)
     return result;
 }
 
+namespace {
+  // co ile sesji zmieniać parametry:
+  static uint32_t g_changeEvery = 10;
+  static uint32_t g_sessionsSinceChange = 0;
+
+  static FTMControl* g_ftmCtrl = nullptr;
+}
+
+
 void SetFtmParams (FtmParams ftmParams);
 
 
-void UpdateFtmParams(FTMControl* ftm, double stopTime)
+static void ApplyFtmFromPython()
 {
-  if (Simulator::Now() >= Seconds(stopTime))
-    return;
+  if (!g_ftmCtrl) return;
 
-  Env env{};                              // wyślij coś w Env 
-  Act act = ftm->GetFTMParams(env);       // odbierz z Pythona
+  Env env{};                         
+  Act act = g_ftmCtrl->GetFTMParams(env);
 
-  if (act.apply)
-  {
-    FtmParams p;
-    p.SetNumberOfBurstsExponent(act.ftmNumberOfBurstsExponent);
-    p.SetBurstDuration(act.ftmBurstDuration);
-    p.SetMinDeltaFtm(act.ftmMinDeltaFtm);
-    p.SetPartialTsfTimer(act.ftmPartialTsfTimer);
-    p.SetPartialTsfNoPref(act.ftmPartialTsfNoPref);
-    p.SetAsap(act.ftmAsap);
-    p.SetFtmsPerBurst(act.ftmFtmsPerBurst);
-    p.SetBurstPeriod(act.ftmBurstPeriod);
-    SetFtmParams(p);
+  if (!act.apply) return;
 
-    // Pomocny log
-    std::cout << "[t=" << Simulator::Now().GetSeconds() << "s] APPLIED FTM: "
-              << "BDur=" << (int)act.ftmBurstDuration
-              << " MinΔ=" << (int)act.ftmMinDeltaFtm
-              << " PerBurst=" << (int)act.ftmFtmsPerBurst
-              << " Period=" << act.ftmBurstPeriod
-              << " ASAP=" << act.ftmAsap
-              << std::endl;
-  }
+  FtmParams p;
+  p.SetNumberOfBurstsExponent(act.ftmNumberOfBurstsExponent);
+  p.SetBurstDuration(act.ftmBurstDuration);
+  p.SetMinDeltaFtm(act.ftmMinDeltaFtm);
+  p.SetPartialTsfTimer(act.ftmPartialTsfTimer);
+  p.SetPartialTsfNoPref(act.ftmPartialTsfNoPref);
+  p.SetAsap(act.ftmAsap);
+  p.SetFtmsPerBurst(act.ftmFtmsPerBurst);
+  p.SetBurstPeriod(act.ftmBurstPeriod);
 
-  Simulator::Schedule(Seconds(10.0), &UpdateFtmParams, ftm, stopTime);
+  SetFtmParams(p);
+
+  std::cout << "[t=" << Simulator::Now().GetSeconds() << "s] APPLIED FTM: "
+            << "BDur="    << int(act.ftmBurstDuration)
+            << " MinΔ="   << int(act.ftmMinDeltaFtm)
+            << " PerBurst=" << int(act.ftmFtmsPerBurst)
+            << " Period=" << act.ftmBurstPeriod
+            << " ASAP="   << act.ftmAsap
+            << std::endl;
 }
 
 
@@ -328,11 +333,12 @@ main (int argc, char *argv[])
 
   int memblock_key = 2333;
   static FTMControl ftm(memblock_key);
+  g_ftmCtrl = &ftm;
 
   SetFtmParams(defaultFtmParams);
 
-  double stopTime = warmupTime + simulationTime;
-  Simulator::Schedule(Seconds(warmupTime + 0.1), &UpdateFtmParams, &ftm, stopTime);
+  // double stopTime = warmupTime + simulationTime;
+  // Simulator::Schedule(Seconds(warmupTime + 0.1), &UpdateFtmParams, &ftm, stopTime);
 
 
 
@@ -849,5 +855,13 @@ FtmSessionOver (FtmSession session)
     {
       // FTM success
       ftmReqRec++;
+
+      g_sessionsSinceChange++;
+      if (g_sessionsSinceChange >= g_changeEvery)
+      {
+        g_sessionsSinceChange = 0;
+        ApplyFtmFromPython();  
+      }
+
     }
 }
