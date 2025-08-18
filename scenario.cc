@@ -93,48 +93,6 @@ namespace {
 }
 
 
-void SetFtmParams (FtmParams ftmParams);
-
-
-static void ApplyFtmFromPython()
-{
-  if (!g_ftmCtrl) return;
-
-  Env env{};    
-  env.attempts = g_sessionsTotal;
-  env.successes = g_sessionsOk;                     
-  Act act = g_ftmCtrl->GetFTMParams(env);
-
-  if (!act.apply) return;
-
-  FtmParams p;
-  p.SetNumberOfBurstsExponent(act.ftmNumberOfBurstsExponent);
-  p.SetBurstDuration(act.ftmBurstDuration);
-  p.SetMinDeltaFtm(act.ftmMinDeltaFtm);
-  p.SetPartialTsfTimer(act.ftmPartialTsfTimer);
-  p.SetPartialTsfNoPref(act.ftmPartialTsfNoPref);
-  p.SetAsap(act.ftmAsap);
-  p.SetFtmsPerBurst(act.ftmFtmsPerBurst);
-  p.SetBurstPeriod(act.ftmBurstPeriod);
-
-  SetFtmParams(p);
-  
-  g_sessionsTotal = 0;
-  g_sessionsOk    = 0;
-  
-
-  std::cout << "[t=" << Simulator::Now().GetSeconds() << "s] APPLIED FTM: "
-            << "BDur="    << int(act.ftmBurstDuration)
-            << " MinΔ="   << int(act.ftmMinDeltaFtm)
-            << " PerBurst=" << int(act.ftmFtmsPerBurst)
-            << " Period=" << act.ftmBurstPeriod
-            << " ASAP="   << act.ftmAsap
-            << std::endl;
-}
-
-
-
-
 /***** Functions declarations *****/
 
 void ChangePower (Ptr<Node> staNode, uint8_t powerLevel);
@@ -147,6 +105,13 @@ void SetPosition (Ptr<MobilityModel> mobilityModel, Vector3D pos);
 void SetFtmParams (FtmParams ftmParams);
 void FtmBurst (uint32_t staId, Ptr <WifiNetDevice> device, Mac48Address apAddress);
 void FtmSessionOver (FtmSession session);
+
+
+static void ApplyFtmFromPython();
+static void FinalFlushToPython();
+
+
+
 
 /***** Global variables and constants *****/
 
@@ -352,7 +317,7 @@ main (int argc, char *argv[])
   // double stopTime = warmupTime + simulationTime;
   // Simulator::Schedule(Seconds(warmupTime + 0.1), &UpdateFtmParams, &ftm, stopTime);
 
-
+  Simulator::Schedule(Seconds(warmupTime + simulationTime - 1e-5), &FinalFlushToPython);
 
 
   // Create AP and stations
@@ -858,6 +823,7 @@ FtmBurst (uint32_t staId, Ptr<WifiNetDevice> device, Mac48Address apAddress)
   Simulator::Schedule (Seconds (ftmIntervalTime), &FtmBurst, staId, device, apAddress);
 }
 
+
 void 
 FtmSessionOver (FtmSession session)
 {
@@ -877,4 +843,65 @@ FtmSessionOver (FtmSession session)
     g_sessionsSinceChange = 0;
     ApplyFtmFromPython();
   }
+}
+
+
+static void ApplyFtmFromPython()
+{
+  if (!g_ftmCtrl) return;
+
+  Env env{};    
+  env.attempts = g_sessionsTotal;
+  env.successes = g_sessionsOk;                     
+  Act act = g_ftmCtrl->GetFTMParams(env);
+
+  if (!act.apply) return;
+
+  FtmParams p;
+  p.SetNumberOfBurstsExponent(act.ftmNumberOfBurstsExponent);
+  p.SetBurstDuration(act.ftmBurstDuration);
+  p.SetMinDeltaFtm(act.ftmMinDeltaFtm);
+  p.SetPartialTsfTimer(act.ftmPartialTsfTimer);
+  p.SetPartialTsfNoPref(act.ftmPartialTsfNoPref);
+  p.SetAsap(act.ftmAsap);
+  p.SetFtmsPerBurst(act.ftmFtmsPerBurst);
+  p.SetBurstPeriod(act.ftmBurstPeriod);
+
+  SetFtmParams(p);
+  
+  g_sessionsTotal = 0;
+  g_sessionsOk    = 0;
+  
+
+  std::cout << "[t=" << Simulator::Now().GetSeconds() << "s] APPLIED FTM: "
+            << "BDur="    << int(act.ftmBurstDuration)
+            << " MinΔ="   << int(act.ftmMinDeltaFtm)
+            << " PerBurst=" << int(act.ftmFtmsPerBurst)
+            << " Period=" << act.ftmBurstPeriod
+            << " ASAP="   << act.ftmAsap
+            << std::endl;
+}
+
+static void FinalFlushToPython()
+{
+  if (!g_ftmCtrl) return;
+
+  if (g_sessionsSinceChange == 0 && g_sessionsTotal == 0)
+    return;
+
+  Env env{};
+  env.attempts  = g_sessionsTotal;
+  env.successes = g_sessionsOk;
+
+  (void) g_ftmCtrl->GetFTMParams(env);
+
+  double rate = (env.attempts > 0)
+                  ? static_cast<double>(env.successes) / env.attempts
+                  : 0.0;
+
+  std::cout << "[t=" << Simulator::Now().GetSeconds()
+            << "s] Final flush: attempts=" << env.attempts
+            << " successes=" << env.successes
+            << " rate=" << rate
+            << std::endl;
 }
