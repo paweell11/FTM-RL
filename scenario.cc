@@ -130,7 +130,7 @@ double ftmIntervalTime = 1.0;
 double ftmParamsSwitch = 0.0;
 double logInterval = 0.5;
 double warmupTime = 10.;
-double simulationTime = 50.;
+double simulationTime = 500.;
 bool hiddenCrossScenario = false;
 
 
@@ -217,7 +217,11 @@ main (int argc, char *argv[])
 
   FtmParams defaultFtmParams;
   defaultFtmParams.SetNumberOfBurstsExponent(1);
-  defaultFtmParams.SetBurstDuration(6);
+  
+  // defaultFtmParams.SetBurstDuration(6);
+  defaultFtmParams.SetBurstDuration(1);
+
+
   defaultFtmParams.SetMinDeltaFtm(4);
   defaultFtmParams.SetPartialTsfTimer(0);
   defaultFtmParams.SetPartialTsfNoPref(true);
