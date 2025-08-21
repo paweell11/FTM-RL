@@ -31,28 +31,25 @@ class Act(Structure):
         ('apply', c_bool),
     ]
 
-# ---------- Thompson Sampling dla ftmBurstDuration (1..10) ----------
+
 class BetaBernoulliTS:
     def __init__(self, arms):
-        self.arms = list(arms)                 # np. [1,2,...,10]
+        self.arms = list(arms)                 
         self.alpha = {a: 1.0 for a in self.arms}
         self.beta  = {a: 1.0 for a in self.arms}
-        self.prev_arm = None                   # ostatnio zastosowane ramię
+        self.prev_arm = None                   
 
     def update_from_segment(self, attempts, successes):
-        """Zaktualizuj posterior dla poprzednio użytego ramienia."""
         if self.prev_arm is None:
             return
         if attempts is None or attempts == 0:
             return
-        # pilnuj spójności
         successes = min(successes, attempts)
         failures = attempts - successes
         self.alpha[self.prev_arm] += successes
         self.beta[self.prev_arm]  += failures
 
     def select_arm(self):
-        """Wylosuj z Beta i wybierz ramię o największej próbce."""
         best_arm = None
         best_draw = -1.0
         for a in self.arms:
@@ -62,31 +59,53 @@ class BetaBernoulliTS:
                 best_arm = a
         self.prev_arm = best_arm
         return best_arm
-# --------------------------------------------------------------------
+
 
 def ftm_success_rate(e: Env):
     return (e.successes / e.attempts) if e.attempts else None
 
-def set_params_with_ts(a: Act, sampler: BetaBernoulliTS):
-    a.ftmBurstDuration = sampler.select_arm()
+def update_all_samplers_from_env(e: Env):
+    attempts, successes = e.attempts, e.successes
+    for s in SAMPLERS.values():
+        s.update_from_segment(attempts, successes)
 
+def set_params_with_ts(a: Act):
+    chosen = {
+        "ftmBurstDuration": SAMPLERS["ftmBurstDuration"].select_arm(),
+        "ftmMinDeltaFtm": SAMPLERS["ftmMinDeltaFtm"].select_arm(),
+        "ftmAsap": SAMPLERS["ftmAsap"].select_arm(),
+        "ftmFtmsPerBurst": SAMPLERS["ftmFtmsPerBurst"].select_arm(),
+        "ftmBurstPeriod": SAMPLERS["ftmBurstPeriod"].select_arm(),
+    }
     a.ftmNumberOfBurstsExponent = 1
-    a.ftmMinDeltaFtm            = 4
-    a.ftmPartialTsfTimer        = 0
-    a.ftmPartialTsfNoPref       = True
-    a.ftmAsap                   = True
-    a.ftmFtmsPerBurst           = 2
-    a.ftmBurstPeriod            = 2
-    a.apply                     = True
+    a.ftmBurstDuration = chosen["ftmBurstDuration"]
+    a.ftmMinDeltaFtm = chosen["ftmMinDeltaFtm"]
+    a.ftmPartialTsfTimer = 0
+    a.ftmPartialTsfNoPref = True
+    a.ftmAsap = chosen["ftmAsap"]
+    a.ftmFtmsPerBurst = chosen["ftmFtmsPerBurst"]
+    a.ftmBurstPeriod = chosen["ftmBurstPeriod"]
+    a.apply = True
+
+    return chosen
+
+
+
+SAMPLERS = {
+    "ftmBurstDuration": BetaBernoulliTS(arms=range(1, 11)),   
+    "ftmMinDeltaFtm": BetaBernoulliTS(arms=range(1, 11)),   
+    "ftmAsap": BetaBernoulliTS(arms=[False, True]),  
+    "ftmFtmsPerBurst": BetaBernoulliTS(arms=range(1, 11)),   
+    "ftmBurstPeriod": BetaBernoulliTS(arms=range(1, 16)),   
+}
+
+
 
 mempool_key  = 1234
 mem_size     = 4096
 memblock_key = 2333
 ns3_path     = '.'
 exp_name     = 'scenario'
-
-# 10 wariantów DURATION: 1..10
-sampler = BetaBernoulliTS(arms=range(1, 11))
 
 exp = Experiment(mempool_key, mem_size, exp_name, ns3_path)
 
@@ -100,26 +119,24 @@ try:
             if data is None:
                 continue
 
-            # 1) feedback z ostatniego segmentu -> aktualizacja posteriora
             e = data.env
             sr = ftm_success_rate(e)
             if sr is None:
                 print("PY recv: attempts=0 (brak SR)")
             else:
                 print(f"PY recv: attempts={e.attempts} succ={e.successes} rate={sr:.3f}")
-                sampler.update_from_segment(attempts=e.attempts, successes=e.successes)
 
-            # 2) wybór nowej akcji (tylko ftmBurstDuration przez TS)
+            update_all_samplers_from_env(e)
+   
             a = data.act
-            set_params_with_ts(a, sampler)
+            chosen = set_params_with_ts(a)
 
-            print("PY sent:",
-                  a.ftmBurstDuration,
-                  a.ftmMinDeltaFtm,
-                  a.ftmFtmsPerBurst,
-                  a.ftmBurstPeriod,
-                  a.ftmAsap)
-
+            print("PY sent (TS):",
+                chosen["ftmBurstDuration"],
+                chosen["ftmMinDeltaFtm"],
+                chosen["ftmFtmsPerBurst"],
+                chosen["ftmBurstPeriod"],
+                chosen["ftmAsap"])
     pro.wait()
 
 except Exception as ex:
