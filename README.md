@@ -22,7 +22,8 @@ mv wifi-ftm-ns3/ns-allinone-3.33-FTM-SigStr/ns-3.33 $NS3_DIR
 
 ```bash
 cp $PROJECT_DIR/scenario.cc $NS3_DIR/scratch
-cp $PROJECT_DIR/run.py $NS3_DIR/scratch
+cp $PROJECT_DIR/ThompsonSampling.py $NS3_DIR/scratch
+cp $PROJECT_DIR/PPO.py $NS3_DIR/scratch
 ```
 
 4. **Build ns-3** 
@@ -44,7 +45,8 @@ pip3 install . --user
 ```bash
 cd $NS3_DIR
 
-python scratch/run.py
+python scratch/ThompsonSampling.py
+python scratch/PPO.py
 ```
 
 If ./waf fails (e.g. with Python 3.10), add #include <limits> to $NS3_DIR/src/core/helper/csv-reader.cc.
