@@ -1,5 +1,10 @@
 # FTM-RL
 
+### Results
+<img width="954" height="438" alt="image" src="https://github.com/user-attachments/assets/68a98899-ae53-495f-82e3-624630c0c81c" />
+<img width="954" height="438" alt="image" src="https://github.com/user-attachments/assets/2092e77d-d57d-428a-b874-f1d3f54c2a39" />
+
+
 
 ### Installation
 1. **Clone the repositories**
