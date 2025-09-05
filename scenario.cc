@@ -40,6 +40,8 @@ struct Env
   uint16_t ftmBurstPeriod;
   uint32_t attempts;   
   uint32_t successes;  
+  uint32_t nWifi;
+  uint32_t dataRate;
 }Packed;
 
 struct Act
@@ -217,11 +219,7 @@ main (int argc, char *argv[])
 
   FtmParams defaultFtmParams;
   defaultFtmParams.SetNumberOfBurstsExponent(1);
-  
-  // defaultFtmParams.SetBurstDuration(6);
-  defaultFtmParams.SetBurstDuration(1);
-
-
+  defaultFtmParams.SetBurstDuration(6);
   defaultFtmParams.SetMinDeltaFtm(4);
   defaultFtmParams.SetPartialTsfTimer(0);
   defaultFtmParams.SetPartialTsfNoPref(true);

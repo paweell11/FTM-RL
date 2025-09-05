@@ -15,6 +15,8 @@ class Env(Structure):
         ('ftmBurstPeriod', c_uint16),
         ('attempts', c_uint32),
         ('successes', c_uint32),
+        ('nWifi', c_uint32),
+        ('dataRate', c_uint32),
     ]
 
 class Act(Structure):
