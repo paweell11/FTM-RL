@@ -1,8 +1,11 @@
 # FTM-RL
 
+### Overviev
+This repository implements reinforcement learning (RL) to tune Wi-fi Fine Tune Measurements (FTM) parameters. Simulations run in ns-3, using ns3-ai for C++ ⬌ Python integration and ns3-ftm to handle FTM sessions. An agent (eg., Thompson Sampling or PPO) updates FTM parameters every N sessions based on success/attemps statistics. The goal is to improve FTM accuracy.
+
 ### Results
-<img width="954" height="438" alt="image" src="https://github.com/user-attachments/assets/68a98899-ae53-495f-82e3-624630c0c81c" />
-<img width="954" height="438" alt="image" src="https://github.com/user-attachments/assets/2092e77d-d57d-428a-b874-f1d3f54c2a39" />
+<img width="953" height="438" alt="image" src="https://github.com/user-attachments/assets/ac300a18-1df3-4b81-b92f-ac0378a7ede0" />
+<img width="953" height="438" alt="image" src="https://github.com/user-attachments/assets/9b88adf9-1800-4e95-808e-8178a7ed273c" />
 
 
 
@@ -54,5 +57,5 @@ python scratch/ThompsonSampling.py
 python scratch/PPO.py
 ```
 
-If ./waf fails (e.g. with Python 3.10), add #include <limits> to $NS3_DIR/src/core/helper/csv-reader.cc.
+If ./waf fails (e.g. with Python 3.10), add ```#include <limits>``` to $NS3_DIR/src/core/helper/csv-reader.cc.
 
